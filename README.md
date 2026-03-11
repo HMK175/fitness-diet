@@ -1,1 +1,22 @@
-# Fitness Diet& echo > 本地离线饮食记录与三大营养素目标对比（PWA）。& echo.& echo ## 运行& echo - 直接打开 index.html 可用核心功能（不含 PWA）。& echo - 建议用本地静态服务器访问 http://localhost/... 以启用 PWA（manifest / service worker）。& echo.& echo ## 数据存储& echo - 全部数据仅保存在浏览器 localStorage。
+# Fitness Diet
+
+本地离线饮食记录与三大营养素目标对比（支持 PWA）。
+
+## 本地运行
+
+- 直接打开 `index.html`：可用核心功能（不含 PWA / Service Worker）。
+- 推荐使用本地静态服务器：用 `http://localhost/...` 访问，可启用 PWA（manifest / service worker）。
+
+## GitHub Pages（给手机/别人设备访问）
+
+1. 推送到 GitHub 仓库
+2. 进入仓库 `Settings` → `Pages`
+3. `Build and deployment` 里选择：
+   - `Source`: `Deploy from a branch`
+   - `Branch`: `main` / `root`
+4. 保存后等待 1-2 分钟，访问页面提示的 URL
+
+## 数据存储
+
+- 所有数据都保存在浏览器 `localStorage`（同域名同端口）。
+- 备份迁移：使用页面里的“导出/导入（JSON）”。

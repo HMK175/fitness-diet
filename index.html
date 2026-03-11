@@ -497,12 +497,38 @@
         <input id="foodFatInput" type="number" min="0" max="100" step="0.1" />
       </div>
     </div>
-    <button id="addFoodBtn" class="btn btn-outline" type="button">保存到我的食物</button>
+    <div class="form-row" style="margin-top:2px;">
+      <button id="addFoodBtn" class="btn btn-outline" type="button">保存到我的食物</button>
+      <button id="cancelEditFoodBtn" class="btn btn-danger-outline" type="button" style="display:none;">取消编辑</button>
+    </div>
 
     <div class="divider"></div>
 
     <div class="section-title">全部食物</div>
     <div class="foods-list" id="foodsList"></div>
+  </section>
+
+  <section class="card" id="dataCard">
+    <div class="card-header">
+      <h2>数据</h2>
+      <small>导出 / 导入（JSON）</small>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button id="exportDataBtn" class="btn btn-outline" type="button">导出数据（下载 JSON）</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="importFileInput">导入数据（会覆盖当前数据）</label>
+        <input id="importFileInput" type="file" accept="application/json" />
+      </div>
+    </div>
+    <div style="font-size:11px;color:#888;line-height:1.5;">
+      导出内容包含：基础配置、食物库（含自定义食物）、每日记录。<br/>
+      导入会覆盖当前浏览器里该站点的全部数据（同域名同端口）。
+    </div>
   </section>
 
   <div class="footer-note">
@@ -523,16 +549,13 @@
     carbsPerKg: 4.0,
     fatPerKg: 0.8
   };
-
   const BUILT_IN_FOODS = [
-    { id: "chicken_breast", name: "鸡胸肉(生)", proteinPer100g: 31, carbsPer100g: 0, fatPer100g: 3.6, systemBuiltIn: true },
-    { id: "egg", name: "鸡蛋(整颗)", proteinPer100g: 13, carbsPer100g: 1.3, fatPer100g: 11, systemBuiltIn: true },
-    { id: "rice_cooked", name: "米饭(熟)", proteinPer100g: 2.6, carbsPer100g: 28, fatPer100g: 0.3, systemBuiltIn: true },
-    { id: "oat", name: "燕麦(干)", proteinPer100g: 13.2, carbsPer100g: 59.5, fatPer100g: 7, systemBuiltIn: true },
-    { id: "milk", name: "牛奶(全脂)", proteinPer100g: 3.2, carbsPer100g: 4.8, fatPer100g: 3.6, systemBuiltIn: true },
-    { id: "beef", name: "牛肉(瘦)", proteinPer100g: 20, carbsPer100g: 0, fatPer100g: 10, systemBuiltIn: true },
-    { id: "broccoli", name: "西兰花(熟)", proteinPer100g: 2.8, carbsPer100g: 7, fatPer100g: 0.4, systemBuiltIn: true }
-  };
+    // 只保留你指定的 4 种系统内置食物（每 100g）
+    { id: "egg", name: "鸡蛋", proteinPer100g: 13, carbsPer100g: 1.3, fatPer100g: 11, systemBuiltIn: true },
+    { id: "chicken_leg", name: "鸡腿", proteinPer100g: 18, carbsPer100g: 0, fatPer100g: 8, systemBuiltIn: true },
+    { id: "duck_leg", name: "鸭腿", proteinPer100g: 17, carbsPer100g: 0, fatPer100g: 12, systemBuiltIn: true },
+    { id: "rice_cooked", name: "米饭（熟）", proteinPer100g: 2.6, carbsPer100g: 28, fatPer100g: 0.3, systemBuiltIn: true }
+  ];
 
   function todayStr() {
     const d = new Date();
@@ -588,7 +611,8 @@
     settings: null,
     foods: [],
     logs: {},
-    currentDate: todayStr()
+    currentDate: todayStr(),
+    editingFoodId: null
   };
 
   function initSettings() {
@@ -605,15 +629,98 @@
       state.foods = [...BUILT_IN_FOODS];
       saveJSON(STORAGE_KEYS.FOODS, state.foods);
     } else {
-      const byId = Object.fromEntries(stored.map(f => [f.id, f]));
-      BUILT_IN_FOODS.forEach(bf => {
-        if (!byId[bf.id]) {
-          stored.push(bf);
-        }
-      });
-      state.foods = stored;
+      state.foods = normalizeFoods(stored);
       saveJSON(STORAGE_KEYS.FOODS, state.foods);
     }
+  }
+
+  function normalizeFoods(foods) {
+    const safe = Array.isArray(foods) ? foods : [];
+    const userFoods = safe.filter(f => f && f.id && !f.systemBuiltIn);
+    const builtInById = Object.fromEntries(BUILT_IN_FOODS.map(f => [f.id, f]));
+    const builtInIds = new Set(BUILT_IN_FOODS.map(f => f.id));
+
+    // 1) 清理旧的系统内置食物（只保留当前 BUILT_IN_FOODS）
+    // 2) 用当前 BUILT_IN_FOODS 覆盖系统食物的名称和宏量（保证名称一致）
+    const normalizedBuiltIns = BUILT_IN_FOODS.map(bf => ({ ...bf, systemBuiltIn: true }));
+
+    // 防止用户自定义食物 ID 与内置冲突：若冲突，保留用户食物但改 ID
+    const normalizedUserFoods = userFoods.map(f => {
+      if (builtInIds.has(f.id)) {
+        return { ...f, id: `user_${Date.now()}_${Math.random().toString(16).slice(2)}` };
+      }
+      return f;
+    });
+
+    return [...normalizedBuiltIns, ...normalizedUserFoods];
+  }
+
+  function exportData() {
+    const payload = {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      settings: loadJSON(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS),
+      foods: loadJSON(STORAGE_KEYS.FOODS, []),
+      logs: loadJSON(STORAGE_KEYS.LOGS, {})
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = url;
+    a.download = `fitness-diet-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importDataFromFile(file) {
+    const text = await file.text();
+    let obj;
+    try {
+      obj = JSON.parse(text);
+    } catch (e) {
+      alert("导入失败：JSON 格式不正确。");
+      return;
+    }
+
+    const ok = confirm("确定导入该备份吗？\n这会覆盖当前浏览器里此网站的所有数据（配置/食物/记录）。");
+    if (!ok) return;
+
+    const settings = obj && typeof obj === "object" ? obj.settings : null;
+    const foods = obj && typeof obj === "object" ? obj.foods : null;
+    const logs = obj && typeof obj === "object" ? obj.logs : null;
+
+    if (!settings || typeof settings !== "object") {
+      alert("导入失败：缺少 settings。");
+      return;
+    }
+    if (!Array.isArray(foods)) {
+      alert("导入失败：foods 必须是数组。");
+      return;
+    }
+    if (!logs || typeof logs !== "object") {
+      alert("导入失败：logs 必须是对象。");
+      return;
+    }
+
+    // 导入后仍强制使用当前 BUILT_IN_FOODS（确保系统食物一致）
+    saveJSON(STORAGE_KEYS.SETTINGS, settings);
+    saveJSON(STORAGE_KEYS.FOODS, normalizeFoods(foods));
+    saveJSON(STORAGE_KEYS.LOGS, logs);
+
+    // 重新初始化状态与渲染
+    initSettings();
+    initFoods();
+    initLogs();
+    renderSettings();
+    renderFoodsList();
+    renderMeals();
+    renderDaySummary();
+    setFoodFormMode();
+
+    alert("导入成功。");
   }
 
   function initLogs() {
@@ -739,7 +846,19 @@
 
       const entriesHTML = meal.entries.map(entry => {
         const food = foods.find(f => f.id === entry.foodId);
-        if (!food) return "";
+        if (!food) {
+          return `
+            <div class="entry" data-meal-id="${meal.id}" data-entry-id="${entry.id}">
+              <div class="entry-main">
+                <span class="entry-name">（已删除食物）· ${entry.grams} g</span>
+                <span class="entry-macros">该条记录关联的食物已从食物库删除</span>
+              </div>
+              <div class="entry-actions">
+                <button class="btn btn-danger-outline btn-xs" type="button" data-role="delete-entry">删除</button>
+              </div>
+            </div>
+          `;
+        }
         const macros = calcEntryMacros(food, entry.grams);
         return `
           <div class="entry" data-meal-id="${meal.id}" data-entry-id="${entry.id}">
@@ -856,6 +975,14 @@
               每 100g：P ${f.proteinPer100g} · C ${f.carbsPer100g} · F ${f.fatPer100g}
             </div>
           </div>
+          ${isUser ? `
+            <div style="display:flex;gap:6px;align-items:center;">
+              <button class="btn btn-outline" type="button" data-role="edit-food" data-food-id="${f.id}">修改</button>
+              <button class="btn btn-danger-outline" type="button" data-role="delete-food" data-food-id="${f.id}">删除</button>
+            </div>
+          ` : `
+            <span style="font-size:11px;color:#999;">内置</span>
+          `}
         </div>
       `;
     }
@@ -865,9 +992,60 @@
       ${userFoods.length ? `<div style="font-size:11px;color:#999;margin-top:4px;">我的食物</div>` : ""}
       ${userFoods.map(f => foodRow(f, true)).join("")}
     `;
+
+    listEl.querySelectorAll('[data-role="edit-food"]').forEach(btn => {
+      btn.addEventListener("click", () => {
+        const foodId = btn.getAttribute("data-food-id");
+        startEditFood(foodId);
+      });
+    });
+
+    listEl.querySelectorAll('[data-role="delete-food"]').forEach(btn => {
+      btn.addEventListener("click", () => {
+        const foodId = btn.getAttribute("data-food-id");
+        deleteFood(foodId);
+      });
+    });
   }
 
-  function addCustomFood() {
+  function setFoodFormMode() {
+    const addBtn = document.getElementById("addFoodBtn");
+    const cancelBtn = document.getElementById("cancelEditFoodBtn");
+    if (state.editingFoodId) {
+      addBtn.textContent = "保存修改";
+      cancelBtn.style.display = "inline-flex";
+    } else {
+      addBtn.textContent = "保存到我的食物";
+      cancelBtn.style.display = "none";
+    }
+  }
+
+  function resetFoodForm() {
+    document.getElementById("foodNameInput").value = "";
+    document.getElementById("foodProteinInput").value = "";
+    document.getElementById("foodCarbsInput").value = "";
+    document.getElementById("foodFatInput").value = "";
+  }
+
+  function startEditFood(foodId) {
+    const food = state.foods.find(f => f.id === foodId);
+    if (!food || food.systemBuiltIn) return;
+    state.editingFoodId = foodId;
+    document.getElementById("foodNameInput").value = food.name;
+    document.getElementById("foodProteinInput").value = food.proteinPer100g;
+    document.getElementById("foodCarbsInput").value = food.carbsPer100g;
+    document.getElementById("foodFatInput").value = food.fatPer100g;
+    setFoodFormMode();
+    document.getElementById("foodNameInput").focus();
+  }
+
+  function cancelEditFood() {
+    state.editingFoodId = null;
+    resetFoodForm();
+    setFoodFormMode();
+  }
+
+  function upsertCustomFood() {
     const nameInput = document.getElementById("foodNameInput");
     const pInput = document.getElementById("foodProteinInput");
     const cInput = document.getElementById("foodCarbsInput");
@@ -887,23 +1065,61 @@
       return;
     }
 
-    const id = "user_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-    state.foods.push({
-      id,
-      name,
-      proteinPer100g: p,
-      carbsPer100g: c,
-      fatPer100g: f,
-      systemBuiltIn: false
-    });
+    if (state.editingFoodId) {
+      const idx = state.foods.findIndex(f => f.id === state.editingFoodId);
+      if (idx === -1 || state.foods[idx].systemBuiltIn) {
+        alert("要修改的食物不存在，可能已被删除。");
+        cancelEditFood();
+        return;
+      }
+      state.foods[idx] = {
+        ...state.foods[idx],
+        name,
+        proteinPer100g: p,
+        carbsPer100g: c,
+        fatPer100g: f
+      };
+      state.editingFoodId = null;
+    } else {
+      const id = "user_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+      state.foods.push({
+        id,
+        name,
+        proteinPer100g: p,
+        carbsPer100g: c,
+        fatPer100g: f,
+        systemBuiltIn: false
+      });
+    }
     saveJSON(STORAGE_KEYS.FOODS, state.foods);
     renderFoodsList();
     renderMeals();
+    renderDaySummary();
 
-    nameInput.value = "";
-    pInput.value = "";
-    cInput.value = "";
-    fInput.value = "";
+    resetFoodForm();
+    setFoodFormMode();
+  }
+
+  function deleteFood(foodId) {
+    const food = state.foods.find(f => f.id === foodId);
+    if (!food) return;
+    if (food.systemBuiltIn) {
+      alert("系统内置食物不支持删除。");
+      return;
+    }
+    const ok = confirm(`确定删除「${food.name}」吗？\n删除后，历史记录里引用它的条目会保留，但会显示为“已删除食物”。`);
+    if (!ok) return;
+
+    state.foods = state.foods.filter(f => f.id !== foodId);
+    saveJSON(STORAGE_KEYS.FOODS, state.foods);
+
+    if (state.editingFoodId === foodId) {
+      cancelEditFood();
+    }
+
+    renderFoodsList();
+    renderMeals();
+    renderDaySummary();
   }
 
   function setupEventListeners() {
@@ -929,7 +1145,16 @@
       renderDaySummary();
     });
 
-    document.getElementById("addFoodBtn").addEventListener("click", addCustomFood);
+    document.getElementById("addFoodBtn").addEventListener("click", upsertCustomFood);
+    document.getElementById("cancelEditFoodBtn").addEventListener("click", cancelEditFood);
+
+    document.getElementById("exportDataBtn").addEventListener("click", exportData);
+    document.getElementById("importFileInput").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      await importDataFromFile(file);
+      e.target.value = "";
+    });
 
     const dateInput = document.getElementById("dateInput");
     dateInput.addEventListener("change", () => {
@@ -958,6 +1183,7 @@
     renderFoodsList();
     renderMeals();
     renderDaySummary();
+    setFoodFormMode();
   }
 
   document.addEventListener("DOMContentLoaded", () => {
