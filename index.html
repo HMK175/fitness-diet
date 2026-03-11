@@ -213,7 +213,7 @@
       inset: 0;
       background: rgba(0,0,0,0.45);
       display: none;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
       padding: 10px;
       z-index: 999;
@@ -537,7 +537,19 @@
       margin-top: 6px;
     }
 
-    @media (max-width: 360px) {
+    @media (max-width: 480px) {
+      .app {
+        max-width: 100%;
+        padding: 10px 10px 32px;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .date-picker {
+        align-items: flex-start;
+      }
       .form-row {
         flex-direction: column;
       }
@@ -818,7 +830,7 @@
   </div>
 </div>
 
-<script>
+<script defer>
   const STORAGE_KEYS = {
     SETTINGS: "nutritionApp_settings",
     FOODS: "nutritionApp_foods",
@@ -843,6 +855,7 @@
 
   let sb = null;
   let cloudCache = null;
+  let currentSession = null; // 缓存当前登录会话，避免点击按钮时完全无反应
 
   const DEFAULT_SETTINGS = {
     heightCm: 170,
@@ -1559,11 +1572,20 @@
     return "已登录";
   }
 
-  async function refreshTopAuthButton() {
+  async function refreshTopAuthButton(sessionFromEvent) {
     const btn = document.getElementById("topAuthBtn");
     if (!btn || !sb) return;
-    const { data } = await sb.auth.getSession();
-    const session = data.session;
+    // 优先使用 onAuthStateChange 传入的 session，失败时再主动获取
+    let session = sessionFromEvent || currentSession;
+    if (!session) {
+      try {
+        const { data } = await sb.auth.getSession();
+        session = data.session;
+      } catch (e) {
+        console.warn("获取会话失败:", e);
+      }
+    }
+    currentSession = session || null;
     if (!session) {
       btn.textContent = "登录";
       btn.classList.remove("btn-primary");
@@ -1579,8 +1601,12 @@
     const info = document.getElementById("profileInfo");
     const nickInput = document.getElementById("nicknameInput");
     if (!info || !nickInput || !sb) return;
-    const { data } = await sb.auth.getSession();
-    const session = data.session;
+    let session = currentSession;
+    if (!session) {
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+      currentSession = session || null;
+    }
     if (!session) {
       info.textContent = "未登录。";
       nickInput.value = "";
@@ -1599,8 +1625,17 @@
 
     if (topBtn) {
       topBtn.addEventListener("click", async () => {
-        const { data } = await sb.auth.getSession();
-        const session = data.session;
+        // 优先使用缓存的 session，避免每次点击都要打一次网络请求
+        let session = currentSession;
+        if (!session) {
+          try {
+            const { data } = await sb.auth.getSession();
+            session = data.session;
+            currentSession = session || null;
+          } catch (e) {
+            console.warn("点击登录时获取会话失败:", e);
+          }
+        }
         if (!session) {
           openAuthModal();
           return;
@@ -1661,8 +1696,9 @@
       }
     });
 
-    sb.auth.onAuthStateChange(async (event) => {
-      await refreshTopAuthButton();
+    sb.auth.onAuthStateChange(async (event, session) => {
+      currentSession = session || null;
+      await refreshTopAuthButton(session || undefined);
       if (event === "SIGNED_IN") {
         await startSyncFlow();
       }
@@ -2342,6 +2378,14 @@
     sb = initSupabase();
     if (sb) {
       setupOnlineUI();
+    } else {
+      // 在线同步不可用时，给登录按钮一个友好的降级提示，避免“点了没反应”
+      const topBtn = document.getElementById("topAuthBtn");
+      if (topBtn) {
+        topBtn.addEventListener("click", () => {
+          alert("当前无法连接在线同步服务（Supabase），本地记录功能仍可正常使用。");
+        });
+      }
     }
   }
 
