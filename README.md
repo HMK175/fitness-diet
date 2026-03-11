@@ -20,3 +20,70 @@
 
 - 所有数据都保存在浏览器 `localStorage`（同域名同端口）。
 - 备份迁移：使用页面里的“导出/导入（JSON）”。
+
+## 在线同步（Supabase）
+
+本项目支持可选的 Supabase 在线同步（登录后跨设备同步）。登录方式是 **邮箱 OTP**，并且设置为 **禁止注册**（只允许你预置的账号登录）。
+
+### 1) Supabase 控制台设置
+
+- **Auth**
+  - 启用 Email 登录
+  - 关闭注册：`Disable signups`
+- **Auth Redirect URLs**
+  - 添加你的站点 URL（本地和 Pages 都要加），例如：
+    - `http://127.0.0.1:5500/fitness%20diet/index.html`
+    - `https://hmk175.github.io/fitness-diet/`
+
+### 2) 建表与 RLS（在 SQL Editor 里执行）
+
+```sql
+create table if not exists public.user_data (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create or replace function public.touch_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_user_data_updated_at on public.user_data;
+create trigger trg_user_data_updated_at
+before update on public.user_data
+for each row execute procedure public.touch_updated_at();
+
+alter table public.user_data enable row level security;
+
+drop policy if exists "user_data_select_own" on public.user_data;
+create policy "user_data_select_own"
+on public.user_data for select
+using (auth.uid() = user_id);
+
+drop policy if exists "user_data_upsert_own" on public.user_data;
+create policy "user_data_upsert_own"
+on public.user_data for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "user_data_update_own" on public.user_data;
+create policy "user_data_update_own"
+on public.user_data for update
+using (auth.uid() = user_id);
+```
+
+### 3) 前端配置
+
+在 `index.html` 里填写：
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
+不填写则在线同步区域会自动隐藏。
+
+## 配额表数据来源
+
+配额表数据来源：B 站「好人松松」主页：`https://space.bilibili.com/2078781964`
