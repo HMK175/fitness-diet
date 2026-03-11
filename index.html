@@ -760,16 +760,22 @@
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label for="loginPasswordInput">密码</label>
+        <input id="loginPasswordInput" type="password" placeholder="••••••••" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label>&nbsp;</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button id="sendOtpBtn" class="btn btn-outline" type="button">发送登录链接/验证码</button>
+          <button id="loginBtn" class="btn btn-outline" type="button">登录</button>
           <button id="logoutBtn" class="btn btn-danger-outline" type="button" style="display:none;">退出登录</button>
           <button id="syncNowBtn" class="btn btn-primary" type="button" style="display:none;">立即同步</button>
         </div>
       </div>
     </div>
     <div style="font-size:11px;color:#888;line-height:1.5;">
-      登录方式：邮箱 OTP（Supabase）。默认不开放注册；只有预置账号可登录。<br/>
+      登录方式：邮箱 + 密码（Supabase）。默认不开放注册；只有预置账号可登录。<br/>
       若你未配置 Supabase，本区域会自动隐藏。
     </div>
   </section>
@@ -1525,7 +1531,7 @@
 
   function setupOnlineUI() {
     const statusEl = document.getElementById("onlineStatus");
-    const sendBtn = document.getElementById("sendOtpBtn");
+    const loginBtn = document.getElementById("loginBtn");
     const logoutBtn = document.getElementById("logoutBtn");
     const syncBtn = document.getElementById("syncNowBtn");
 
@@ -1543,24 +1549,23 @@
       syncBtn.style.display = "inline-flex";
     };
 
-    sendBtn.addEventListener("click", async () => {
+    loginBtn.addEventListener("click", async () => {
       const email = document.getElementById("loginEmailInput").value.trim();
+      const password = document.getElementById("loginPasswordInput").value;
       if (!email) {
         alert("请输入邮箱");
         return;
       }
+      if (!password) {
+        alert("请输入密码");
+        return;
+      }
       try {
-        const { error } = await sb.auth.signInWithOtp({
-          email,
-          options: {
-            shouldCreateUser: false,
-            emailRedirectTo: window.location.href
-          }
-        });
+        const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        alert("已发送登录邮件（链接/验证码）。请打开邮箱完成登录，然后回到此页面。");
+        // onAuthStateChange 会触发同步弹窗（C）
       } catch (e) {
-        alert(`发送失败：${e.message || e}`);
+        alert(`登录失败：${e.message || e}`);
       }
     });
 

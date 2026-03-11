@@ -23,12 +23,12 @@
 
 ## 在线同步（Supabase）
 
-本项目支持可选的 Supabase 在线同步（登录后跨设备同步）。登录方式是 **邮箱 OTP**，并且设置为 **禁止注册**（只允许你预置的账号登录）。
+本项目支持可选的 Supabase 在线同步（登录后跨设备同步）。登录方式是 **邮箱 + 密码**，并且设置为 **禁止注册**（只允许你预置的账号登录）。
 
 ### 1) Supabase 控制台设置
 
 - **Auth**
-  - 启用 Email 登录
+  - 启用 Email 登录（Password）
   - 关闭注册：`Disable signups`
 - **Auth Redirect URLs**
   - 添加你的站点 URL（本地和 Pages 都要加），例如：
@@ -75,7 +75,11 @@ on public.user_data for update
 using (auth.uid() = user_id);
 ```
 
-### 3) 前端配置
+### 3) 预置账号
+
+在 Supabase 控制台 `Auth` → `Users` 里创建你要允许登录的用户（邮箱 + 密码）。
+
+### 4) 前端配置
 
 在 `index.html` 里填写：
 
