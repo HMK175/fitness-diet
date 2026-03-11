@@ -557,6 +557,9 @@
     <div class="date-picker">
       <label for="dateInput">日期</label>
       <input type="date" id="dateInput" />
+      <div style="margin-top:6px;display:flex;justify-content:flex-end;">
+        <button id="topAuthBtn" class="btn btn-outline" type="button" style="padding:4px 10px;font-size:12px;">登录</button>
+      </div>
     </div>
   </header>
 
@@ -721,64 +724,73 @@
     <div class="foods-list" id="foodsList"></div>
   </section>
 
-  <section class="card" id="dataCard">
-    <div class="card-header">
-      <h2>数据</h2>
-      <small>导出 / 导入（JSON）</small>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>&nbsp;</label>
-        <button id="exportDataBtn" class="btn btn-outline" type="button">导出数据（下载 JSON）</button>
+  <div class="modal-backdrop" id="authModalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="登录">
+      <div class="modal-header">
+        <div class="title">登录</div>
+        <button class="btn btn-danger-outline" type="button" id="closeAuthModalBtn">关闭</button>
       </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="importFileInput">导入数据（会覆盖当前数据）</label>
-        <input id="importFileInput" type="file" accept="application/json" />
-      </div>
-    </div>
-    <div style="font-size:11px;color:#888;line-height:1.5;">
-      导出内容包含：基础配置、食物库（含自定义食物）、每日记录。<br/>
-      导入会覆盖当前浏览器里该站点的全部数据（同域名同端口）。
-    </div>
-  </section>
-
-  <section class="card" id="onlineCard">
-    <div class="card-header">
-      <h2>在线同步</h2>
-      <small>登录后跨设备同步</small>
-    </div>
-    <div id="onlineStatus" style="font-size:12px;color:#666;line-height:1.6;margin-bottom:8px;">
-      未登录（仅本地存储）。
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="loginEmailInput">邮箱</label>
-        <input id="loginEmailInput" type="email" placeholder="your@email.com" />
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="loginPasswordInput">密码</label>
-        <input id="loginPasswordInput" type="password" placeholder="••••••••" />
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>&nbsp;</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button id="loginBtn" class="btn btn-outline" type="button">登录</button>
-          <button id="logoutBtn" class="btn btn-danger-outline" type="button" style="display:none;">退出登录</button>
-          <button id="syncNowBtn" class="btn btn-primary" type="button" style="display:none;">立即同步</button>
+      <div class="modal-body">
+        <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:10px;">
+          使用邮箱 + 密码登录（Supabase）。不开放注册；只有预置账号可登录。
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="loginEmailInput">邮箱</label>
+            <input id="loginEmailInput" type="email" placeholder="your@email.com" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="loginPasswordInput">密码</label>
+            <input id="loginPasswordInput" type="password" placeholder="••••••••" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="loginBtn" class="btn btn-primary" type="button">登录</button>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#888;line-height:1.5;">
+          登录成功后会弹出同步方式选择（云端覆盖 / 本地覆盖 / 合并）。
         </div>
       </div>
     </div>
-    <div style="font-size:11px;color:#888;line-height:1.5;">
-      登录方式：邮箱 + 密码（Supabase）。默认不开放注册；只有预置账号可登录。<br/>
-      若你未配置 Supabase，本区域会自动隐藏。
+  </div>
+
+  <div class="modal-backdrop" id="profileModalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="账号">
+      <div class="modal-header">
+        <div class="title">账号</div>
+        <button class="btn btn-danger-outline" type="button" id="closeProfileModalBtn">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div id="profileInfo" style="font-size:12px;color:#666;line-height:1.6;margin-bottom:10px;"></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="nicknameInput">昵称</label>
+            <input id="nicknameInput" type="text" placeholder="想显示的名字" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="saveNicknameBtn" class="btn btn-outline" type="button">保存昵称</button>
+              <button id="syncNowBtn" class="btn btn-primary" type="button">立即同步</button>
+              <button id="logoutBtn" class="btn btn-danger-outline" type="button">退出登录</button>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#888;line-height:1.5;">
+          昵称将保存到账号资料（Supabase user metadata），登录同一账号的所有设备都会显示一致。
+        </div>
+      </div>
     </div>
-  </section>
+  </div>
 
   <div class="modal-backdrop" id="syncModalBackdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-label="同步选择">
@@ -1349,25 +1361,7 @@
     return [...normalizedBuiltIns, ...normalizedUserFoods];
   }
 
-  function exportData() {
-    const payload = {
-      schemaVersion: 1,
-      exportedAt: new Date().toISOString(),
-      settings: loadJSON(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS),
-      foods: loadJSON(STORAGE_KEYS.FOODS, []),
-      logs: loadJSON(STORAGE_KEYS.LOGS, {})
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    a.href = url;
-    a.download = `fitness-diet-backup-${stamp}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
+  // 已移除：本地 JSON 导出/导入（由云端同步替代）
 
   function getLocalBundle() {
     return {
@@ -1529,114 +1523,155 @@
     }
   }
 
+  function openAuthModal() {
+    const backdrop = document.getElementById("authModalBackdrop");
+    if (!backdrop) return;
+    backdrop.style.display = "flex";
+    backdrop.setAttribute("aria-hidden", "false");
+  }
+
+  function closeAuthModal() {
+    const backdrop = document.getElementById("authModalBackdrop");
+    if (!backdrop) return;
+    backdrop.style.display = "none";
+    backdrop.setAttribute("aria-hidden", "true");
+  }
+
+  function openProfileModal() {
+    const backdrop = document.getElementById("profileModalBackdrop");
+    if (!backdrop) return;
+    backdrop.style.display = "flex";
+    backdrop.setAttribute("aria-hidden", "false");
+  }
+
+  function closeProfileModal() {
+    const backdrop = document.getElementById("profileModalBackdrop");
+    if (!backdrop) return;
+    backdrop.style.display = "none";
+    backdrop.setAttribute("aria-hidden", "true");
+  }
+
+  function getDisplayNameFromUser(user) {
+    const nick = user?.user_metadata?.nickname;
+    if (nick && String(nick).trim()) return String(nick).trim();
+    const email = user?.email;
+    if (email) return email.split("@")[0];
+    return "已登录";
+  }
+
+  async function refreshTopAuthButton() {
+    const btn = document.getElementById("topAuthBtn");
+    if (!btn || !sb) return;
+    const { data } = await sb.auth.getSession();
+    const session = data.session;
+    if (!session) {
+      btn.textContent = "登录";
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-outline");
+      return;
+    }
+    btn.textContent = getDisplayNameFromUser(session.user);
+    btn.classList.remove("btn-outline");
+    btn.classList.add("btn-primary");
+  }
+
+  async function refreshProfileModalContent() {
+    const info = document.getElementById("profileInfo");
+    const nickInput = document.getElementById("nicknameInput");
+    if (!info || !nickInput || !sb) return;
+    const { data } = await sb.auth.getSession();
+    const session = data.session;
+    if (!session) {
+      info.textContent = "未登录。";
+      nickInput.value = "";
+      return;
+    }
+    info.textContent = `当前账号：${session.user.email || session.user.id}`;
+    nickInput.value = session.user.user_metadata?.nickname || "";
+  }
+
   function setupOnlineUI() {
-    const statusEl = document.getElementById("onlineStatus");
+    const topBtn = document.getElementById("topAuthBtn");
     const loginBtn = document.getElementById("loginBtn");
     const logoutBtn = document.getElementById("logoutBtn");
     const syncBtn = document.getElementById("syncNowBtn");
+    const saveNickBtn = document.getElementById("saveNicknameBtn");
 
-    const updateUI = async () => {
-      const { data } = await sb.auth.getSession();
-      const session = data.session;
-      if (!session) {
-        statusEl.textContent = "未登录（仅本地存储）。";
-        logoutBtn.style.display = "none";
-        syncBtn.style.display = "none";
-        return;
-      }
-      statusEl.textContent = `已登录：${session.user.email || session.user.id}`;
-      logoutBtn.style.display = "inline-flex";
-      syncBtn.style.display = "inline-flex";
-    };
+    if (topBtn) {
+      topBtn.addEventListener("click", async () => {
+        const { data } = await sb.auth.getSession();
+        const session = data.session;
+        if (!session) {
+          openAuthModal();
+          return;
+        }
+        await refreshProfileModalContent();
+        openProfileModal();
+      });
+    }
 
-    loginBtn.addEventListener("click", async () => {
+    // 登录弹窗
+    document.getElementById("closeAuthModalBtn")?.addEventListener("click", closeAuthModal);
+    document.getElementById("authModalBackdrop")?.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "authModalBackdrop") closeAuthModal();
+    });
+
+    // 账号弹窗
+    document.getElementById("closeProfileModalBtn")?.addEventListener("click", closeProfileModal);
+    document.getElementById("profileModalBackdrop")?.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "profileModalBackdrop") closeProfileModal();
+    });
+
+    loginBtn?.addEventListener("click", async () => {
       const email = document.getElementById("loginEmailInput").value.trim();
       const password = document.getElementById("loginPasswordInput").value;
-      if (!email) {
-        alert("请输入邮箱");
-        return;
-      }
-      if (!password) {
-        alert("请输入密码");
-        return;
-      }
+      if (!email) return alert("请输入邮箱");
+      if (!password) return alert("请输入密码");
       try {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        closeAuthModal();
         // onAuthStateChange 会触发同步弹窗（C）
       } catch (e) {
         alert(`登录失败：${e.message || e}`);
       }
     });
 
-    logoutBtn.addEventListener("click", async () => {
+    logoutBtn?.addEventListener("click", async () => {
       await sb.auth.signOut();
       cloudCache = null;
-      await updateUI();
+      closeProfileModal();
+      await refreshTopAuthButton();
       alert("已退出登录。");
     });
 
-    syncBtn.addEventListener("click", async () => {
+    syncBtn?.addEventListener("click", async () => {
       await startSyncFlow();
     });
 
+    saveNickBtn?.addEventListener("click", async () => {
+      const nick = document.getElementById("nicknameInput").value.trim();
+      try {
+        const { error } = await sb.auth.updateUser({ data: { nickname: nick } });
+        if (error) throw error;
+        await refreshTopAuthButton();
+        alert("昵称已保存。");
+      } catch (e) {
+        alert(`保存失败：${e.message || e}`);
+      }
+    });
+
     sb.auth.onAuthStateChange(async (event) => {
-      await updateUI();
+      await refreshTopAuthButton();
       if (event === "SIGNED_IN") {
         await startSyncFlow();
       }
     });
 
-    updateUI();
+    refreshTopAuthButton();
   }
 
-  async function importDataFromFile(file) {
-    const text = await file.text();
-    let obj;
-    try {
-      obj = JSON.parse(text);
-    } catch (e) {
-      alert("导入失败：JSON 格式不正确。");
-      return;
-    }
-
-    const ok = confirm("确定导入该备份吗？\n这会覆盖当前浏览器里此网站的所有数据（配置/食物/记录）。");
-    if (!ok) return;
-
-    const settings = obj && typeof obj === "object" ? obj.settings : null;
-    const foods = obj && typeof obj === "object" ? obj.foods : null;
-    const logs = obj && typeof obj === "object" ? obj.logs : null;
-
-    if (!settings || typeof settings !== "object") {
-      alert("导入失败：缺少 settings。");
-      return;
-    }
-    if (!Array.isArray(foods)) {
-      alert("导入失败：foods 必须是数组。");
-      return;
-    }
-    if (!logs || typeof logs !== "object") {
-      alert("导入失败：logs 必须是对象。");
-      return;
-    }
-
-    // 导入后仍强制使用当前 BUILT_IN_FOODS（确保系统食物一致）
-    saveJSON(STORAGE_KEYS.SETTINGS, settings);
-    saveJSON(STORAGE_KEYS.FOODS, normalizeFoods(foods));
-    saveJSON(STORAGE_KEYS.LOGS, logs);
-
-    // 重新初始化状态与渲染
-    initSettings();
-    initFoods();
-    initLogs();
-    renderSettings();
-    renderFoodsList();
-    renderMeals();
-    renderDaySummary();
-    setFoodFormMode();
-
-    alert("导入成功。");
-  }
+  // 已移除：本地 JSON 导出/导入（由云端同步替代）
 
   function initLogs() {
     const stored = loadJSON(STORAGE_KEYS.LOGS, {});
@@ -2260,13 +2295,7 @@
     document.getElementById("addFoodBtn").addEventListener("click", upsertCustomFood);
     document.getElementById("cancelEditFoodBtn").addEventListener("click", cancelEditFood);
 
-    document.getElementById("exportDataBtn").addEventListener("click", exportData);
-    document.getElementById("importFileInput").addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      await importDataFromFile(file);
-      e.target.value = "";
-    });
+    // 已移除：本地 JSON 导出/导入
 
     // 同步弹窗
     const closeSyncBtn = document.getElementById("closeSyncModalBtn");
@@ -2311,13 +2340,8 @@
 
     // Supabase 初始化（可选）
     sb = initSupabase();
-    const onlineCard = document.getElementById("onlineCard");
-    if (onlineCard) {
-      if (!sb) {
-        onlineCard.style.display = "none";
-      } else {
-        setupOnlineUI();
-      }
+    if (sb) {
+      setupOnlineUI();
     }
   }
 
