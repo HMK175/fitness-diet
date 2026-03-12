@@ -537,6 +537,77 @@
       margin-top: 6px;
     }
 
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: auto;
+      background: #fff;
+    }
+
+    table.rank-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 520px;
+    }
+
+    table.rank-table th,
+    table.rank-table td {
+      border-bottom: 1px solid #eef1f7;
+      padding: 8px 8px;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    table.rank-table th {
+      position: sticky;
+      top: 0;
+      background: #f8f9fd;
+      z-index: 1;
+      font-weight: 700;
+      color: #556;
+    }
+
+    .rank-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .rank-toolbar .left,
+    .rank-toolbar .right {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .rank-note {
+      font-size: 11px;
+      color: #888;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+
+    .rank-mine {
+      border: 1px dashed #d9e2f5;
+      background: #f8fbff;
+      border-radius: 12px;
+      padding: 10px;
+      margin: 10px 0 12px;
+    }
+
+    .rank-mine .title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #345;
+    }
+
     @media (max-width: 480px) {
       .app {
         max-width: 100%;
@@ -614,7 +685,7 @@
       </div>
       <div class="form-group">
         <label>&nbsp;</label>
-        <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+        <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;width:100%;">
           <button id="viewQuotaBtn" class="btn btn-outline" type="button">查看配额表</button>
           <button id="saveSettingsBtn" class="btn btn-primary" type="button">保存配置</button>
         </div>
@@ -736,6 +807,17 @@
     <div class="foods-list" id="foodsList"></div>
   </section>
 
+  <section class="card" id="rankCard">
+    <div class="card-header">
+      <h2>排行榜</h2>
+      <small>今日 kcal · 三大项力量</small>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+      <button id="openRankModalBtn" class="btn btn-primary" type="button">打开排行榜</button>
+    </div>
+    <div class="rank-note">说明：需登录后才能上传自己的数据；查看榜单不强制登录。</div>
+  </section>
+
   <div class="modal-backdrop" id="authModalBackdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-label="登录">
       <div class="modal-header">
@@ -825,6 +907,130 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="rankModalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="排行榜">
+      <div class="modal-header">
+        <div class="title">排行榜</div>
+        <button class="btn btn-danger-outline" type="button" id="closeRankModalBtn">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="rank-toolbar">
+          <div class="left">
+            <div class="segmented" role="tablist" aria-label="排行榜类型">
+              <button id="rankTabKcalBtn" type="button">今日 kcal</button>
+              <button id="rankTabStrengthBtn" type="button">力量（三大项）</button>
+            </div>
+          </div>
+          <div class="right">
+            <div class="form-group" style="margin:0;min-width:170px;">
+              <label style="margin:0 0 2px;">排序</label>
+              <select id="rankSortSelect">
+                <option value="kcal_desc">kcal（高→低）</option>
+                <option value="bw_asc">体重（低→高）</option>
+                <option value="bw_desc">体重（高→低）</option>
+                <option value="bench_desc">卧推 1RM（高→低）</option>
+                <option value="deadlift_desc">硬拉 1RM（高→低）</option>
+                <option value="squat_desc">深蹲 1RM（高→低）</option>
+                <option value="total_desc">三项总和/体重（高→低）</option>
+              </select>
+            </div>
+            <button id="rankRefreshBtn" class="btn btn-outline" type="button">刷新</button>
+            <button id="openRankInputModalBtn" class="btn btn-primary" type="button" style="display:none;">我的数据</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="rank-table" id="rankTable"></table>
+        </div>
+        <div class="rank-note" id="rankStatus"></div>
+        <div class="rank-note" id="rankViewHint">提示：点击“我的数据”可以录入并上传你的今日数据；体重默认读取主页面配置。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="rankInputModalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="我的数据">
+      <div class="modal-header">
+        <div class="title">我的数据</div>
+        <button class="btn btn-danger-outline" type="button" id="closeRankInputModalBtn">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="rank-note" id="rankInputHint"></div>
+
+        <div class="section-title">卧推</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rankBenchDirect1rmInput">卧推 1RM（可直接填）</label>
+            <input id="rankBenchDirect1rmInput" type="number" min="0" max="600" step="0.5" placeholder="不填则按做组计算" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rankBenchWeightInput">做组重量 (kg)</label>
+            <input id="rankBenchWeightInput" type="number" min="0" max="600" step="0.5" />
+          </div>
+          <div class="form-group">
+            <label for="rankBenchRepsInput">次数</label>
+            <input id="rankBenchRepsInput" type="number" min="1" max="30" step="1" />
+          </div>
+          <div class="form-group">
+            <label for="rankBenchSetsInput">组数</label>
+            <input id="rankBenchSetsInput" type="number" min="1" max="20" step="1" />
+          </div>
+        </div>
+
+        <div class="section-title">硬拉</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rankDeadliftDirect1rmInput">硬拉 1RM（可直接填）</label>
+            <input id="rankDeadliftDirect1rmInput" type="number" min="0" max="800" step="0.5" placeholder="不填则按做组计算" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rankDeadliftWeightInput">做组重量 (kg)</label>
+            <input id="rankDeadliftWeightInput" type="number" min="0" max="800" step="0.5" />
+          </div>
+          <div class="form-group">
+            <label for="rankDeadliftRepsInput">次数</label>
+            <input id="rankDeadliftRepsInput" type="number" min="1" max="30" step="1" />
+          </div>
+          <div class="form-group">
+            <label for="rankDeadliftSetsInput">组数</label>
+            <input id="rankDeadliftSetsInput" type="number" min="1" max="20" step="1" />
+          </div>
+        </div>
+
+        <div class="section-title">深蹲</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rankSquatDirect1rmInput">深蹲 1RM（可直接填）</label>
+            <input id="rankSquatDirect1rmInput" type="number" min="0" max="800" step="0.5" placeholder="不填则按做组计算" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rankSquatWeightInput">做组重量 (kg)</label>
+            <input id="rankSquatWeightInput" type="number" min="0" max="800" step="0.5" />
+          </div>
+          <div class="form-group">
+            <label for="rankSquatRepsInput">次数</label>
+            <input id="rankSquatRepsInput" type="number" min="1" max="30" step="1" />
+          </div>
+          <div class="form-group">
+            <label for="rankSquatSetsInput">组数</label>
+            <input id="rankSquatSetsInput" type="number" min="1" max="20" step="1" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+          <button id="rankSaveLocalBtn" class="btn btn-outline" type="button">保存到本地</button>
+          <button id="rankUploadTodayBtn" class="btn btn-primary" type="button">上传/更新今日数据</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="footer-note">
     所有数据仅保存在本地浏览器，可放心使用。
   </div>
@@ -834,7 +1040,8 @@
   const STORAGE_KEYS = {
     SETTINGS: "nutritionApp_settings",
     FOODS: "nutritionApp_foods",
-    LOGS: "nutritionApp_logs"
+    LOGS: "nutritionApp_logs",
+    RANK_PROFILE: "nutritionApp_rankProfile"
   };
 
   // ===== Supabase 在线同步配置（可选）=====
@@ -843,6 +1050,7 @@
   const SUPABASE_URL = "https://vedsvbpmyunvtnxenzab.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_Cj_GHZ9A_qC_TMfVuzEc0Q_k9wtLhr5";
   const SUPABASE_USER_DATA_TABLE = "user_data";
+  const SUPABASE_RANK_TABLE = "public_leaderboard_daily";
 
   function isSupabaseConfigured() {
     return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && window.supabase.createClient);
@@ -1316,8 +1524,345 @@
     foods: [],
     logs: {},
     currentDate: todayStr(),
-    editingFoodId: null
+    editingFoodId: null,
+    rankTab: "kcal" // kcal | strength
   };
+
+  const DEFAULT_RANK_PROFILE = {
+    bench: { direct1rm: null, weight: null, reps: null, sets: null },
+    deadlift: { direct1rm: null, weight: null, reps: null, sets: null },
+    squat: { direct1rm: null, weight: null, reps: null, sets: null }
+  };
+
+  function normalizeRankProfile(p) {
+    const base = JSON.parse(JSON.stringify(DEFAULT_RANK_PROFILE));
+    if (!p || typeof p !== "object") return base;
+    function n(x) {
+      const v = Number(x);
+      return Number.isFinite(v) ? v : null;
+    }
+    ["bench", "deadlift", "squat"].forEach(k => {
+      const src = p[k] || {};
+      base[k].direct1rm = n(src.direct1rm);
+      base[k].weight = n(src.weight);
+      base[k].reps = n(src.reps);
+      base[k].sets = n(src.sets);
+    });
+    return base;
+  }
+
+  function loadRankProfile() {
+    return normalizeRankProfile(loadJSON(STORAGE_KEYS.RANK_PROFILE, DEFAULT_RANK_PROFILE));
+  }
+
+  function saveRankProfile(p) {
+    saveJSON(STORAGE_KEYS.RANK_PROFILE, normalizeRankProfile(p));
+  }
+
+  function calcKcalFromMacros({ protein, carbs, fat }) {
+    const p = Number(protein) || 0;
+    const c = Number(carbs) || 0;
+    const f = Number(fat) || 0;
+    return p * 4 + c * 4 + f * 9;
+  }
+
+  // Epley 公式：1RM = w * (1 + reps/30)
+  function estimate1RM(weightKg, reps) {
+    const w = Number(weightKg);
+    const r = Number(reps);
+    if (!Number.isFinite(w) || !Number.isFinite(r) || w <= 0 || r <= 0) return null;
+    return w * (1 + r / 30);
+  }
+
+  function pickLift1RM(lift) {
+    const direct = Number(lift?.direct1rm);
+    if (Number.isFinite(direct) && direct > 0) return direct;
+    const est = estimate1RM(lift?.weight, lift?.reps);
+    return est && est > 0 ? est : null;
+  }
+
+  function ratioText(value, bw) {
+    const v = Number(value);
+    const b = Number(bw);
+    if (!Number.isFinite(v) || v <= 0 || !Number.isFinite(b) || b <= 0) return "";
+    return (v / b).toFixed(2) + "×";
+  }
+
+  function openRankInputModal() {
+    const backdrop = document.getElementById("rankInputModalBackdrop");
+    if (!backdrop) return;
+    backdrop.style.display = "flex";
+    backdrop.setAttribute("aria-hidden", "false");
+  }
+
+  function closeRankInputModal() {
+    const backdrop = document.getElementById("rankInputModalBackdrop");
+    if (!backdrop) return;
+    backdrop.style.display = "none";
+    backdrop.setAttribute("aria-hidden", "true");
+  }
+
+  function openRankModal() {
+    const backdrop = document.getElementById("rankModalBackdrop");
+    if (!backdrop) return;
+    backdrop.style.display = "flex";
+    backdrop.setAttribute("aria-hidden", "false");
+  }
+
+  function closeRankModal() {
+    const backdrop = document.getElementById("rankModalBackdrop");
+    if (!backdrop) return;
+    backdrop.style.display = "none";
+    backdrop.setAttribute("aria-hidden", "true");
+  }
+
+  function setRankTab(tab) {
+    state.rankTab = tab === "strength" ? "strength" : "kcal";
+    document.getElementById("rankTabKcalBtn")?.classList.toggle("active", state.rankTab === "kcal");
+    document.getElementById("rankTabStrengthBtn")?.classList.toggle("active", state.rankTab === "strength");
+
+    const sortSel = document.getElementById("rankSortSelect");
+    if (sortSel) {
+      if (state.rankTab === "kcal") {
+        sortSel.value = sortSel.value.startsWith("kcal") ? sortSel.value : "kcal_desc";
+      } else {
+        if (sortSel.value.startsWith("kcal")) sortSel.value = "total_desc";
+      }
+    }
+  }
+
+  function fillRankMineForm(profile) {
+    const p = normalizeRankProfile(profile);
+    function setVal(id, v) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = v ?? "";
+    }
+
+    setVal("rankBenchDirect1rmInput", p.bench.direct1rm);
+    setVal("rankBenchWeightInput", p.bench.weight);
+    setVal("rankBenchRepsInput", p.bench.reps);
+    setVal("rankBenchSetsInput", p.bench.sets);
+
+    setVal("rankDeadliftDirect1rmInput", p.deadlift.direct1rm);
+    setVal("rankDeadliftWeightInput", p.deadlift.weight);
+    setVal("rankDeadliftRepsInput", p.deadlift.reps);
+    setVal("rankDeadliftSetsInput", p.deadlift.sets);
+
+    setVal("rankSquatDirect1rmInput", p.squat.direct1rm);
+    setVal("rankSquatWeightInput", p.squat.weight);
+    setVal("rankSquatRepsInput", p.squat.reps);
+    setVal("rankSquatSetsInput", p.squat.sets);
+  }
+
+  function readRankMineForm() {
+    function num(id) {
+      const v = parseFloat(document.getElementById(id)?.value);
+      return Number.isFinite(v) ? v : null;
+    }
+    return normalizeRankProfile({
+      bench: { direct1rm: num("rankBenchDirect1rmInput"), weight: num("rankBenchWeightInput"), reps: num("rankBenchRepsInput"), sets: num("rankBenchSetsInput") },
+      deadlift: { direct1rm: num("rankDeadliftDirect1rmInput"), weight: num("rankDeadliftWeightInput"), reps: num("rankDeadliftRepsInput"), sets: num("rankDeadliftSetsInput") },
+      squat: { direct1rm: num("rankSquatDirect1rmInput"), weight: num("rankSquatWeightInput"), reps: num("rankSquatRepsInput"), sets: num("rankSquatSetsInput") }
+    });
+  }
+
+  function buildMyLeaderboardPayload(dateStr, profile) {
+    const p = normalizeRankProfile(profile);
+    const bw = state.settings?.weightKg || null;
+    const dayLog = getOrCreateDayLog(dateStr);
+    const totals = calcDayTotals(dayLog);
+    const kcal = Math.round(calcKcalFromMacros(totals));
+
+    const bench1rm = pickLift1RM(p.bench);
+    const deadlift1rm = pickLift1RM(p.deadlift);
+    const squat1rm = pickLift1RM(p.squat);
+    const total1rm = (bench1rm || 0) + (deadlift1rm || 0) + (squat1rm || 0);
+
+    return {
+      date: dateStr,
+      bodyweight_kg: bw,
+      kcal,
+      protein_g: Math.round((totals.protein || 0) * 10) / 10,
+      carbs_g: Math.round((totals.carbs || 0) * 10) / 10,
+      fat_g: Math.round((totals.fat || 0) * 10) / 10,
+      bench_1rm: bench1rm,
+      deadlift_1rm: deadlift1rm,
+      squat_1rm: squat1rm,
+      total_1rm: total1rm || null
+    };
+  }
+
+  async function uploadMyLeaderboard(dateStr) {
+    if (!sb) throw new Error("当前无法连接在线服务（Supabase）");
+    const { data: sessData } = await sb.auth.getSession();
+    const session = sessData.session;
+    if (!session) throw new Error("请先登录");
+    const user = session.user;
+
+    const profile = readRankMineForm();
+    saveRankProfile(profile);
+
+    const payload = buildMyLeaderboardPayload(dateStr, profile);
+    if (!payload.bodyweight_kg || payload.bodyweight_kg <= 0) throw new Error("请先在主页面填写体重（kg），并点击“保存配置”。");
+
+    const row = {
+      date: payload.date,
+      user_id: user.id,
+      nickname: getDisplayNameFromUser(user),
+      bodyweight_kg: payload.bodyweight_kg,
+      kcal: payload.kcal,
+      protein_g: payload.protein_g,
+      carbs_g: payload.carbs_g,
+      fat_g: payload.fat_g,
+      bench_1rm: payload.bench_1rm,
+      deadlift_1rm: payload.deadlift_1rm,
+      squat_1rm: payload.squat_1rm,
+      total_1rm: payload.total_1rm
+    };
+
+    const { error } = await sb.from(SUPABASE_RANK_TABLE).upsert(row, { onConflict: "date,user_id" });
+    if (error) throw error;
+  }
+
+  function sortRows(rows, sortKey) {
+    const key = String(sortKey || "kcal_desc");
+    const arr = Array.isArray(rows) ? [...rows] : [];
+    function num(v) {
+      const x = Number(v);
+      return Number.isFinite(x) ? x : null;
+    }
+    function cmpDesc(a, b) {
+      if (a == null && b == null) return 0;
+      if (a == null) return 1;
+      if (b == null) return -1;
+      return b - a;
+    }
+    function cmpAsc(a, b) {
+      if (a == null && b == null) return 0;
+      if (a == null) return 1;
+      if (b == null) return -1;
+      return a - b;
+    }
+
+    const get = (r) => {
+      if (key.startsWith("kcal")) return num(r.kcal);
+      if (key.startsWith("bw")) return num(r.bodyweight_kg);
+      if (key.startsWith("bench")) return num(r.bench_1rm);
+      if (key.startsWith("deadlift")) return num(r.deadlift_1rm);
+      if (key.startsWith("squat")) return num(r.squat_1rm);
+      if (key.startsWith("total")) {
+        const bw = num(r.bodyweight_kg);
+        const t = num(r.total_1rm);
+        if (!bw || !t) return null;
+        return t / bw;
+      }
+      return null;
+    };
+
+    const desc = key.endsWith("_desc");
+    arr.sort((ra, rb) => (desc ? cmpDesc(get(ra), get(rb)) : cmpAsc(get(ra), get(rb))));
+    return arr;
+  }
+
+  function renderRankTable(rows) {
+    const table = document.getElementById("rankTable");
+    if (!table) return;
+    const data = Array.isArray(rows) ? rows : [];
+    const sorted = sortRows(data, document.getElementById("rankSortSelect")?.value);
+
+    const thKcal = `
+      <tr>
+        <th>#</th>
+        <th>昵称</th>
+        <th>kcal</th>
+        <th>P/C/F (g)</th>
+        <th>更新时间</th>
+      </tr>
+    `;
+
+    const thStrength = `
+      <tr>
+        <th>#</th>
+        <th>昵称</th>
+        <th>体重</th>
+        <th>卧推 1RM</th>
+        <th>硬拉 1RM</th>
+        <th>深蹲 1RM</th>
+        <th>三项总和/体重</th>
+        <th>更新时间</th>
+      </tr>
+    `;
+
+    function td(text) {
+      return `<td>${text == null ? "-" : text}</td>`;
+    }
+
+    const body = sorted.map((r, idx) => {
+      const name = r.nickname || (r.user_id ? String(r.user_id).slice(0, 8) : "未知");
+      const updated = r.updated_at ? formatTS(r.updated_at) : "-";
+      if (state.rankTab === "kcal") {
+        const pcf = `${Number(r.protein_g || 0).toFixed(1)}/${Number(r.carbs_g || 0).toFixed(1)}/${Number(r.fat_g || 0).toFixed(1)}`;
+        return `
+          <tr>
+            ${td(idx + 1)}
+            ${td(name)}
+            ${td(Number(r.kcal || 0).toFixed(0))}
+            ${td(pcf)}
+            ${td(updated)}
+          </tr>
+        `;
+      }
+      const bw = Number(r.bodyweight_kg);
+      const bench = Number(r.bench_1rm);
+      const dead = Number(r.deadlift_1rm);
+      const squat = Number(r.squat_1rm);
+      const total = Number(r.total_1rm);
+      const totalRatio = (Number.isFinite(total) && Number.isFinite(bw) && bw > 0) ? (total / bw).toFixed(2) + "×" : "-";
+
+      const benchTxt = Number.isFinite(bench) && bench > 0 ? `${bench.toFixed(1)} <span style="color:#888;font-size:11px;">(${ratioText(bench,bw)})</span>` : "-";
+      const deadTxt = Number.isFinite(dead) && dead > 0 ? `${dead.toFixed(1)} <span style="color:#888;font-size:11px;">(${ratioText(dead,bw)})</span>` : "-";
+      const squatTxt = Number.isFinite(squat) && squat > 0 ? `${squat.toFixed(1)} <span style="color:#888;font-size:11px;">(${ratioText(squat,bw)})</span>` : "-";
+
+      return `
+        <tr>
+          ${td(idx + 1)}
+          ${td(name)}
+          ${td(Number.isFinite(bw) ? bw.toFixed(1) : "-")}
+          <td>${benchTxt}</td>
+          <td>${deadTxt}</td>
+          <td>${squatTxt}</td>
+          ${td(totalRatio)}
+          ${td(updated)}
+        </tr>
+      `;
+    }).join("");
+
+    table.innerHTML = `
+      <thead>${state.rankTab === "kcal" ? thKcal : thStrength}</thead>
+      <tbody>${body || `<tr><td colspan="${state.rankTab === "kcal" ? 5 : 8}" style="color:#888;padding:12px;">暂无数据</td></tr>`}</tbody>
+    `;
+  }
+
+  async function fetchAndRenderRank(dateStr) {
+    const status = document.getElementById("rankStatus");
+    const sortSel = document.getElementById("rankSortSelect");
+    if (status) status.textContent = "加载中...";
+    try {
+      if (!sb) throw new Error("当前无法连接在线服务（Supabase）");
+      if (!sortSel) throw new Error("页面组件缺失");
+      const { data, error } = await sb
+        .from(SUPABASE_RANK_TABLE)
+        .select("date,user_id,nickname,bodyweight_kg,kcal,protein_g,carbs_g,fat_g,bench_1rm,deadlift_1rm,squat_1rm,total_1rm,updated_at")
+        .eq("date", dateStr);
+      if (error) throw error;
+      renderRankTable(data || []);
+      if (status) status.textContent = `日期：${dateStr} · 共 ${Array.isArray(data) ? data.length : 0} 人`;
+    } catch (e) {
+      if (status) status.textContent = `加载失败：${e.message || e}`;
+      renderRankTable([]);
+    }
+  }
 
   function initSettings() {
     const stored = loadJSON(STORAGE_KEYS.SETTINGS, null);
@@ -2243,6 +2788,71 @@
   }
 
   function setupEventListeners() {
+    // 排行榜弹窗
+    document.getElementById("openRankModalBtn")?.addEventListener("click", async () => {
+      openRankModal();
+      setRankTab(state.rankTab);
+      const inputBtn = document.getElementById("openRankInputModalBtn");
+      const viewHint = document.getElementById("rankViewHint");
+      if (inputBtn) inputBtn.style.display = sb ? "inline-flex" : "none";
+      if (viewHint) {
+        viewHint.textContent = sb
+          ? "提示：点击“我的数据”可以录入并上传你的今日数据；体重默认读取主页面配置。"
+          : "当前无法连接在线服务（Supabase），无法拉取/上传榜单。你仍可继续使用本地记录功能。";
+      }
+      await fetchAndRenderRank(state.currentDate);
+    });
+    document.getElementById("closeRankModalBtn")?.addEventListener("click", closeRankModal);
+    document.getElementById("rankModalBackdrop")?.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "rankModalBackdrop") closeRankModal();
+    });
+    document.getElementById("openRankInputModalBtn")?.addEventListener("click", () => {
+      if (!sb) return alert("当前无法连接在线服务（Supabase）。");
+      const hint = document.getElementById("rankInputHint");
+      const bw = state.settings?.weightKg;
+      if (hint) {
+        hint.textContent = `体重自动读取主页面配置：${Number(bw) ? bw.toFixed(1) : "未填写"} kg。建议先点击“保存配置”。`;
+      }
+      fillRankMineForm(loadRankProfile());
+      openRankInputModal();
+    });
+
+    // 我的数据弹窗
+    document.getElementById("closeRankInputModalBtn")?.addEventListener("click", closeRankInputModal);
+    document.getElementById("rankInputModalBackdrop")?.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "rankInputModalBackdrop") closeRankInputModal();
+    });
+    document.getElementById("rankTabKcalBtn")?.addEventListener("click", async () => {
+      setRankTab("kcal");
+      await fetchAndRenderRank(state.currentDate);
+    });
+    document.getElementById("rankTabStrengthBtn")?.addEventListener("click", async () => {
+      setRankTab("strength");
+      const sortSel = document.getElementById("rankSortSelect");
+      if (sortSel && sortSel.value.startsWith("kcal")) sortSel.value = "total_desc";
+      await fetchAndRenderRank(state.currentDate);
+    });
+    document.getElementById("rankSortSelect")?.addEventListener("change", async () => {
+      await fetchAndRenderRank(state.currentDate);
+    });
+    document.getElementById("rankRefreshBtn")?.addEventListener("click", async () => {
+      await fetchAndRenderRank(state.currentDate);
+    });
+    document.getElementById("rankSaveLocalBtn")?.addEventListener("click", () => {
+      saveRankProfile(readRankMineForm());
+      alert("已保存到本地。");
+    });
+    document.getElementById("rankUploadTodayBtn")?.addEventListener("click", async () => {
+      try {
+        await uploadMyLeaderboard(state.currentDate);
+        alert("已上传/更新。");
+        closeRankInputModal();
+        await fetchAndRenderRank(state.currentDate);
+      } catch (e) {
+        alert(`上传失败：${e.message || e}`);
+      }
+    });
+
     document.getElementById("saveSettingsBtn").addEventListener("click", () => {
       const heightCm = parseFloat(document.getElementById("heightInput").value);
       const weightKg = parseFloat(document.getElementById("weightInput").value);
@@ -2353,6 +2963,11 @@
       getOrCreateDayLog(state.currentDate);
       renderMeals();
       renderDaySummary();
+      // 若排行榜弹窗正在打开，切换日期时自动刷新榜单
+      const rankBackdrop = document.getElementById("rankModalBackdrop");
+      if (rankBackdrop && rankBackdrop.style.display === "flex") {
+        fetchAndRenderRank(state.currentDate);
+      }
     });
   }
 
@@ -2373,6 +2988,8 @@
     renderMeals();
     renderDaySummary();
     setFoodFormMode();
+    setRankTab("kcal");
+    renderRankTable([]);
 
     // Supabase 初始化（可选）
     sb = initSupabase();

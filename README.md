@@ -7,7 +7,9 @@
 - 直接打开 `index.html`：可用核心功能（不含 PWA / Service Worker）。
 - 推荐使用本地静态服务器：用 `http://localhost/...` 访问，可启用 PWA（manifest / service worker）。
 
-## GitHub Pages（给手机/别人设备访问）
+## 部署到公网（给手机/别人设备访问）
+
+### 方式一：GitHub Pages
 
 1. 推送到 GitHub 仓库
 2. 进入仓库 `Settings` → `Pages`
@@ -15,6 +17,10 @@
    - `Source`: `Deploy from a branch`
    - `Branch`: `main` / `root`
 4. 保存后等待 1-2 分钟，访问页面提示的 URL
+
+### 方式二：腾讯云 COS（适合中国大陆访问）
+
+GitHub Pages 在国内可能较慢，可改用腾讯云对象存储做静态网站托管。**从创建存储桶开始的完整步骤**见：[DEPLOY_TENCENT.md](./DEPLOY_TENCENT.md)。
 
 ## 数据存储
 
@@ -95,6 +101,69 @@ using (auth.uid() = user_id);
 - `settings`：基础配置（身高/体重/性别/阶段/训练休息日/三大营养素设置等）
 - `foods`：食物库（内置 + 自定义）
 - `logs`：每日记录（按日期的餐次与条目）
+
+## 排行榜（Supabase 公共榜单）
+
+当前实现了两个公共榜单（按日期）：
+
+- **今日 kcal 排行榜**：来自你在该日期下的饮食记录（P/C/F 自动换算 kcal）
+- **力量（三大项）排行榜**：卧推/硬拉/深蹲，支持“直接填 1RM”或“做组重量×次数自动估算 1RM（Epley）”；表格会显示每项 \(1RM / 体重\) 倍数，以及三项总和/体重倍数
+
+### 需要新增表与 RLS（在 SQL Editor 执行）
+
+> 说明：此表是“公开可读”的（用于所有人查看排行榜），但**只允许登录用户写入/更新自己的行**。
+
+```sql
+create table if not exists public.public_leaderboard_daily (
+  date date not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  nickname text,
+  bodyweight_kg numeric,
+  kcal integer,
+  protein_g numeric,
+  carbs_g numeric,
+  fat_g numeric,
+  bench_1rm numeric,
+  deadlift_1rm numeric,
+  squat_1rm numeric,
+  total_1rm numeric,
+  updated_at timestamptz not null default now(),
+  primary key (date, user_id)
+);
+
+create or replace function public.touch_updated_at_leaderboard()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_public_leaderboard_daily_updated_at on public.public_leaderboard_daily;
+create trigger trg_public_leaderboard_daily_updated_at
+before update on public.public_leaderboard_daily
+for each row execute procedure public.touch_updated_at_leaderboard();
+
+alter table public.public_leaderboard_daily enable row level security;
+
+-- 公开可读（任何人都能查看榜单）
+drop policy if exists "leaderboard_read_all" on public.public_leaderboard_daily;
+create policy "leaderboard_read_all"
+on public.public_leaderboard_daily for select
+using (true);
+
+-- 仅本人可写入
+drop policy if exists "leaderboard_insert_own" on public.public_leaderboard_daily;
+create policy "leaderboard_insert_own"
+on public.public_leaderboard_daily for insert
+with check (auth.uid() = user_id);
+
+-- 仅本人可更新
+drop policy if exists "leaderboard_update_own" on public.public_leaderboard_daily;
+create policy "leaderboard_update_own"
+on public.public_leaderboard_daily for update
+using (auth.uid() = user_id);
+```
 
 ## 配额表数据来源
 
