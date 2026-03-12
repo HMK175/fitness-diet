@@ -2170,23 +2170,28 @@
 
     if (topBtn) {
       topBtn.addEventListener("click", async () => {
-        // 优先使用缓存的 session，避免每次点击都要打一次网络请求
-        let session = currentSession;
-        if (!session) {
-          try {
-            const { data } = await sb.auth.getSession();
-            session = data.session;
-            currentSession = session || null;
-          } catch (e) {
-            console.warn("点击登录时获取会话失败:", e);
+        try {
+          // 优先使用缓存的 session，避免每次点击都要打一次网络请求
+          let session = currentSession;
+          if (!session) {
+            try {
+              const { data } = await sb.auth.getSession();
+              session = data.session;
+              currentSession = session || null;
+            } catch (e) {
+              console.warn("点击登录时获取会话失败:", e);
+            }
           }
+          if (!session) {
+            openAuthModal();
+            return;
+          }
+          await refreshProfileModalContent();
+          openProfileModal();
+        } catch (e) {
+          console.error("点击用户名按钮时发生错误:", e);
+          alert("打开账号信息时出错，请刷新页面后重试。");
         }
-        if (!session) {
-          openAuthModal();
-          return;
-        }
-        await refreshProfileModalContent();
-        openProfileModal();
       });
     }
 
@@ -2218,15 +2223,25 @@
     });
 
     logoutBtn?.addEventListener("click", async () => {
-      await sb.auth.signOut();
-      cloudCache = null;
-      closeProfileModal();
-      await refreshTopAuthButton();
-      alert("已退出登录。");
+      try {
+        await sb.auth.signOut();
+        cloudCache = null;
+        closeProfileModal();
+        await refreshTopAuthButton();
+        alert("已退出登录。");
+      } catch (e) {
+        console.error("退出登录失败:", e);
+        alert(`退出登录失败：${e.message || e}`);
+      }
     });
 
     syncBtn?.addEventListener("click", async () => {
-      await startSyncFlow();
+      try {
+        await startSyncFlow();
+      } catch (e) {
+        console.error("同步流程出错:", e);
+        alert(`同步失败：${e.message || e}`);
+      }
     });
 
     saveNickBtn?.addEventListener("click", async () => {
