@@ -1,0 +1,248 @@
+<!-- pages/index/index.wxml -->
+<view class="page">
+  <view class="app-card">
+    <view class="app-header">
+      <view class="app-title">饮食记录</view>
+      <view class="app-subtitle">三大营养素 · 本地 + 云同步</view>
+    </view>
+
+    <view wx:if="{{!loggedIn}}" class="login-section">
+      <button class="btn btn-primary" bindtap="onLoginTap">使用微信登录</button>
+      <view class="login-hint">
+        登录仅用于识别你的账号（openid），
+        数据会存储在你的微信云开发环境中。
+      </view>
+    </view>
+
+    <view wx:else class="content">
+      <view class="info-row">
+        <view class="label">登录状态</view>
+        <view class="value ok">已登录</view>
+      </view>
+      <view class="info-row">
+        <view class="label">openid</view>
+        <view class="value openid">{{openid}}</view>
+      </view>
+
+      <!-- 顶部日期 -->
+      <view class="info-row">
+        <view class="label">日期</view>
+        <picker mode="date" value="{{dateStr}}" bindchange="onDateChange">
+          <view class="value date-value">{{dateStr}}</view>
+        </picker>
+      </view>
+
+      <!-- 基础配置 -->
+      <view class="section">
+        <view class="section-title">基础配置</view>
+        <view class="settings-grid">
+          <view class="settings-row">
+            <view class="settings-item">
+              <view class="settings-label">身高 (cm)</view>
+              <input class="settings-input"
+                     type="number"
+                     value="{{settings.heightCm}}"
+                     bindinput="onHeightInput" />
+            </view>
+            <view class="settings-item">
+              <view class="settings-label">体重 (kg)</view>
+              <input class="settings-input"
+                     type="number"
+                     value="{{settings.weightKg}}"
+                     bindinput="onWeightInput" />
+            </view>
+          </view>
+
+          <view class="settings-row">
+            <view class="settings-item">
+              <view class="settings-label">性别</view>
+              <picker mode="selector"
+                      range="{{['male','female']}}"
+                      value="{{settings.gender === 'female' ? 1 : 0}}"
+                      bindchange="onGenderChange">
+                <view class="settings-picker">
+                  {{settings.gender === 'female' ? '女性' : '男性'}}
+                </view>
+              </picker>
+            </view>
+            <view class="settings-item">
+              <view class="settings-label">阶段</view>
+              <picker mode="selector"
+                      range="{{['bulk','cut']}}"
+                      value="{{settings.phase === 'cut' ? 1 : 0}}"
+                      bindchange="onPhaseChange">
+                <view class="settings-picker">
+                  {{settings.phase === 'cut' ? '减脂' : '增肌'}}
+                </view>
+              </picker>
+            </view>
+          </view>
+
+          <view class="settings-row">
+            <view class="settings-item full">
+              <view class="settings-label">训练/休息日</view>
+              <view class="daytype-segment">
+                <view class="daytype-btn {{settings.dayType === 'training' ? 'active' : ''}}"
+                      data-type="training"
+                      bindtap="onDayTypeChange">
+                  训练日
+                </view>
+                <view class="daytype-btn {{settings.dayType === 'rest' ? 'active' : ''}}"
+                      data-type="rest"
+                      bindtap="onDayTypeChange">
+                  休息日
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <view class="settings-row">
+            <view class="settings-item">
+              <view class="settings-label">蛋白 (g/kg)</view>
+              <input class="settings-input"
+                     type="number"
+                     value="{{settings.proteinPerKg}}"
+                     bindinput="onProteinPerKgInput" />
+            </view>
+            <view class="settings-item">
+              <view class="settings-label">训练日碳水 (g/kg)</view>
+              <input class="settings-input"
+                     type="number"
+                     value="{{settings.carbsTrainingPerKg}}"
+                     bindinput="onCarbsTrainingInput" />
+            </view>
+          </view>
+
+          <view class="settings-row">
+            <view class="settings-item">
+              <view class="settings-label">休息日碳水 (g/kg)</view>
+              <input class="settings-input"
+                     type="number"
+                     value="{{settings.carbsRestPerKg}}"
+                     bindinput="onCarbsRestInput" />
+            </view>
+            <view class="settings-item">
+              <view class="settings-label">脂肪目标 (g/天)</view>
+              <input class="settings-input"
+                     type="number"
+                     value="{{settings.fatGrams}}"
+                     bindinput="onFatInput" />
+            </view>
+          </view>
+
+          <view class="settings-actions">
+            <button class="btn btn-outline" bindtap="onOpenQuotaPage">查看配额表</button>
+            <button class="btn btn-outline" bindtap="onAutoFromQuotaTap">按配额表自动填写</button>
+            <button class="btn btn-outline save-btn" bindtap="onSaveSettingsTap">保存配置</button>
+          </view>
+        </view>
+      </view>
+
+      <!-- 今日统计 -->
+      <view class="section">
+        <view class="section-title">今日统计（与目标对比）</view>
+        <view class="summary-list">
+          <view wx:for="{{daySummary}}" wx:key="key" class="summary-row">
+            <view class="summary-header">
+              <view class="summary-name">{{item.label}}</view>
+              <view class="summary-values">
+                {{item.currentText}} / {{item.targetText}} · {{item.percent}}%
+              </view>
+            </view>
+            <view class="summary-bar-track">
+              <view class="summary-bar {{item.over ? 'over' : ''}}"
+                    style="width: {{item.percent > 130 ? 130 : item.percent}}%; background-color: {{item.over ? '#eb5757' : item.color}};">
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 日期选择 -->
+      <view class="section">
+        <view class="section-title-row">
+          <view class="section-title">今日用餐</view>
+          <picker mode="date" value="{{dateStr}}" bindchange="onDateChange">
+            <view class="date-pill">{{dateStr}}</view>
+          </picker>
+        </view>
+
+        <!-- 用餐卡片 -->
+        <view class="meal-card" wx:for="{{mealsForToday}}" wx:key="id">
+          <view class="meal-header">
+            <view class="meal-title">{{item.name}}</view>
+            <view class="meal-sub">{{item.summary}}</view>
+          </view>
+
+          <view class="meal-form">
+            <picker mode="selector"
+                    range="{{foods}}"
+                    range-key="name"
+                    data-meal-id="{{item.id}}"
+                    bindchange="onFoodPickerChange">
+              <view class="picker-display">
+                <text wx:if="{{formState[item.id].foodIndex >= 0}}">
+                  {{foods[formState[item.id].foodIndex].name}}
+                </text>
+                <text wx:else>选择食物...</text>
+              </view>
+            </picker>
+
+            <input class="grams-input"
+                   type="number"
+                   placeholder="重量 g"
+                   data-meal-id="{{item.id}}"
+                   value="{{formState[item.id].grams}}"
+                   bindinput="onGramsInput" />
+
+            <button class="btn btn-outline"
+                    type="primary"
+                    data-meal-id="{{item.id}}"
+                    bindtap="onAddEntryTap">
+              添加到{{item.name}}
+            </button>
+          </view>
+
+          <view class="entries">
+            <view wx:if="{{!item.entries.length}}" class="entry-empty">
+              暂无记录，先添加一条吧。
+            </view>
+            <view wx:for="{{item.entries}}"
+                  wx:for-item="entry"
+                  wx:key="id"
+                  class="entry-row">
+              <view class="entry-main">
+                <view class="entry-name" wx:if="{{!entry.deleted}}">{{entry.text}}</view>
+                <view class="entry-name deleted" wx:if="{{entry.deleted}}">{{entry.text}}</view>
+                <view class="entry-sub">{{entry.subText}}</view>
+              </view>
+              <button class="btn btn-danger"
+                      size="mini"
+                      data-meal-id="{{item.id}}"
+                      data-entry-id="{{entry.id}}"
+                      bindtap="onDeleteEntryTap">
+                删除
+              </button>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 食物库 -->
+      <view class="section">
+        <view class="section-title-row">
+          <view class="section-title">食物库</view>
+          <button class="btn btn-outline" bindtap="onOpenFoodsPage">打开</button>
+        </view>
+      </view>
+
+      <!-- 排行榜入口 -->
+      <view class="section">
+        <view class="section-title-row">
+          <view class="section-title">排行榜</view>
+          <button class="btn btn-outline" bindtap="onOpenRankPage">打开</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
